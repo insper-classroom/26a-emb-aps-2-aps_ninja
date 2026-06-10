@@ -105,7 +105,9 @@ __attribute__((weak)) void *ei_malloc(size_t size) {
 }
 
 #ifdef FREERTOS_ENABLED
-void *pvPortCalloc(size_t sNb, size_t sSize)
+// weak: o heap_4.c do FreeRTOS-Kernel deste projeto ja define pvPortCalloc;
+// sem o weak o link falha com "multiple definition" (visto no CI)
+__attribute__((weak)) void *pvPortCalloc(size_t sNb, size_t sSize)
 {
     void *vPtr = NULL;
     if (sSize > 0) {
