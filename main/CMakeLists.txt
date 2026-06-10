@@ -22,6 +22,7 @@ add_executable(pico_emb
     main.c
     imu_ei.cpp
     hc06.c
+    protocol.c
     ssd1306/ssd1306.c
     ${EI_SRC_CPP}
     ${EI_SRC_CC}
@@ -55,6 +56,7 @@ target_include_directories(pico_emb PRIVATE
 target_link_libraries(pico_emb PRIVATE
     pico_async_context_freertos
     FreeRTOS-Kernel-Heap4
+    Fusion
     pico_stdlib
     hardware_adc
     hardware_i2c

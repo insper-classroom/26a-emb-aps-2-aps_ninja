@@ -5,7 +5,8 @@ SUBWAY-CTRL -> Subway Surfers: o "driver" do controle no PC.
 Conecta no HC-06 por Bluetooth SPP (RFCOMM, socket nativo do Linux), lê os
 quadros Controle->PC e converte em teclas do jogo:
 
-  GESTO  up/down/left/right  ->  setas (pular/rolar/trocar de pista)
+  GESTO  up/down/left/right  ->  setas (inclinacao do controle, sem IA)
+  GESTO  especial (UPDOWN)   ->  espaco (gesto sobe-e-desce, via IA)
   BOTAO  de acao (unico)     ->  espaco (inicia o jogo / ativa o poder)
   BATERIA                    ->  mostrada no terminal
 
@@ -61,7 +62,9 @@ MSG_GAME_EVENT = 0x10
 MSG_HAPTIC     = 0x11
 MSG_LED        = 0x12
 
-GESTOS = {0: None, 1: "up", 2: "down", 3: "left", 4: "right"}
+# 1-4: movimento por inclinacao (Fusion/APS7, sem IA) -> setas
+# 5:   gesto UPDOWN reconhecido pela IA -> espaco (especial/start)
+GESTOS = {0: None, 1: "up", 2: "down", 3: "left", 4: "right", 5: "space"}
 GE_DIED, GE_COIN, GE_POWERUP = 1, 2, 3
 
 MAX_PAYLOAD = 8
@@ -150,7 +153,10 @@ except Exception as e:  # sem display / sem pynput: roda "as cegas" p/ debug
 def handle_frame(type_, payload):
     if type_ == MSG_GESTURE and len(payload) >= 2:
         gesto, conf = GESTOS.get(payload[0]), payload[1]
-        if gesto:
+        if gesto == "space":
+            press(gesto)
+            print(f"  ESPECIAL UPDOWN ({conf}%) -> espaco")
+        elif gesto:
             press(gesto)
             print(f"  GESTO {gesto.upper():5s} ({conf}%) -> seta")
         else:

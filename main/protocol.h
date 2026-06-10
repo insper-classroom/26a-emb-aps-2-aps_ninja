@@ -29,11 +29,14 @@
 #define MSG_LED        0x12   // payload: r, g, b
 
 // gesture_id
-#define GEST_IDLE   0
-#define GEST_UP     1
-#define GEST_DOWN   2
-#define GEST_LEFT   3
-#define GEST_RIGHT  4
+// UP/DOWN/LEFT/RIGHT vêm da inclinação (Fusion AHRS, estilo APS 7);
+// SPECIAL vem da IA (Edge Impulse, gesto "UPDOWN") e vira espaço no PC.
+#define GEST_IDLE    0
+#define GEST_UP      1
+#define GEST_DOWN    2
+#define GEST_LEFT    3
+#define GEST_RIGHT   4
+#define GEST_SPECIAL 5
 
 // game event_id (PC -> Controle)
 #define GE_DIED     1
@@ -43,22 +46,12 @@
 #define PROTO_MAX_PAYLOAD 8
 #define PROTO_MAX_FRAME   (4 + PROTO_MAX_PAYLOAD)
 
-static inline uint8_t proto_checksum(uint8_t type, uint8_t len, const uint8_t *payload) {
-    uint8_t c = (uint8_t)(type ^ len);
-    for (uint8_t i = 0; i < len; i++) c ^= payload[i];
-    return c;
-}
+// Implementações em protocol.c (header só com protótipos)
+uint8_t proto_checksum(uint8_t type, uint8_t len, const uint8_t *payload);
 
 // Monta um quadro completo em buf (>= PROTO_MAX_FRAME). Retorna o nº de bytes.
-static inline size_t proto_build(uint8_t sync, uint8_t type,
-                                 const uint8_t *payload, uint8_t len,
-                                 uint8_t *buf) {
-    buf[0] = sync;
-    buf[1] = type;
-    buf[2] = len;
-    for (uint8_t i = 0; i < len; i++) buf[3 + i] = payload[i];
-    buf[3 + len] = proto_checksum(type, len, payload);
-    return (size_t)(4 + len);
-}
+size_t proto_build(uint8_t sync, uint8_t type,
+                   const uint8_t *payload, uint8_t len,
+                   uint8_t *buf);
 
 #endif // PROTOCOL_H

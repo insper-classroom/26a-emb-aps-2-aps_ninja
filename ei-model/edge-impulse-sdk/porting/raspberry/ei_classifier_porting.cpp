@@ -104,10 +104,17 @@ __attribute__((weak)) void *ei_malloc(size_t size) {
 #endif
 }
 
-// pvPortCalloc ja existe no heap_4.c do FreeRTOS-Kernel deste projeto —
-// definir aqui de novo dava "multiple definition" no link.
 #ifdef FREERTOS_ENABLED
-extern "C" void *pvPortCalloc(size_t sNb, size_t sSize);
+void *pvPortCalloc(size_t sNb, size_t sSize)
+{
+    void *vPtr = NULL;
+    if (sSize > 0) {
+        vPtr = pvPortMalloc(sSize * sNb); // Call FreeRTOS or other standard API
+        if(vPtr)
+           memset(vPtr, 0, (sSize * sNb)); // Must required
+    }
+    return vPtr;
+}
 #endif
 
 __attribute__((weak)) void *ei_calloc(size_t nitems, size_t size) {

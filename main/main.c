@@ -44,12 +44,13 @@
 #define STATUS_FADE_MS     20
 
 // ============================================================================
-// Único estado estático do programa: ponteiro de contexto para as ISRs.
-// As ISRs do pico-sdk não recebem user-data, então precisam alcançar as filas
-// por aqui. É o único uso de variável estática (não compartilha estado de
-// aplicação — só dá às ISRs acesso às filas).
+// Filas acessadas pelas ISRs. As ISRs do pico-sdk não recebem user-data,
+// então os DOIS handles de fila (e somente eles) são globais — a exceção
+// permitida pelas boas práticas de RTOS ("use queue or semaphore instead of
+// global var"). O resto do estado segue no controller_t, sem globais.
 // ============================================================================
-static controller_t *s_isr_ctx = NULL;
+QueueHandle_t q_isr_rx;        // ISR UART   -> bt_rx_task
+QueueHandle_t q_isr_buttons;   // ISR botões -> input_task
 
 // ============================================================================
 // ISRs
@@ -58,7 +59,7 @@ static void uart_rx_isr(void) {
     while (uart_is_readable(HC06_UART_ID)) {
         uint8_t ch = uart_getc(HC06_UART_ID);
         BaseType_t hpw = pdFALSE;
-        xQueueSendFromISR(s_isr_ctx->q_rx, &ch, &hpw);
+        xQueueSendFromISR(q_isr_rx, &ch, &hpw);
         portYIELD_FROM_ISR(hpw);
     }
 }
@@ -69,7 +70,7 @@ static void gpio_btn_isr(uint gpio, uint32_t events) {
         .edge = (events & GPIO_IRQ_EDGE_FALL) ? 1 : 0,  // pull-up: fall = press
     };
     BaseType_t hpw = pdFALSE;
-    xQueueSendFromISR(s_isr_ctx->q_buttons, &e, &hpw);
+    xQueueSendFromISR(q_isr_buttons, &e, &hpw);
     portYIELD_FROM_ISR(hpw);
 }
 
@@ -505,15 +506,17 @@ int main(void) {
     memset(&ctx, 0, sizeof(ctx));
     strncpy(ctx.pin, HC06_DEFAULT_PIN, sizeof(ctx.pin) - 1);
 
+    // As duas filas das ISRs são os handles globais; o contexto guarda uma
+    // cópia p/ as tasks (a IRQ de RX é ligada pelo bt_init_task, após a
+    // config AT do HC-06).
+    q_isr_rx      = xQueueCreate(256, sizeof(uint8_t));
+    q_isr_buttons = xQueueCreate(32, sizeof(btn_event_t));
+
     ctx.q_events    = xQueueCreate(64, sizeof(ctrl_event_t));
-    ctx.q_rx        = xQueueCreate(256, sizeof(uint8_t));
-    ctx.q_buttons   = xQueueCreate(32, sizeof(btn_event_t));
+    ctx.q_rx        = q_isr_rx;
+    ctx.q_buttons   = q_isr_buttons;
     ctx.q_feedback  = xQueueCreate(32, sizeof(fb_event_t));
     ctx.mutex_state = xSemaphoreCreateMutex();
-
-    // Expõe o contexto às ISRs (a IRQ de RX é ligada pelo bt_init_task,
-    // após a config AT do HC-06)
-    s_isr_ctx = &ctx;
 
     // --- Tasks ---
     xTaskCreate(bt_init_task, "btinit",  1024, &ctx, 1, NULL);  // config HC-06

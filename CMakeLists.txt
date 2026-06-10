@@ -71,5 +71,9 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
     add_compile_options(-Wno-maybe-uninitialized)
 endif()
 
+# Fusion AHRS (mesma lib da APS 7): converte gyro+accel em roll/pitch p/ a
+# detecção de movimento por inclinação (sem IA)
+add_subdirectory(Fusion)
+
 # Hardware-specific examples in subdirectories:
 add_subdirectory(main)
